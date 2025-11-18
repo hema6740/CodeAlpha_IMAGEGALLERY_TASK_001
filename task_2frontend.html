@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Calculator — Task 2</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --panel:#0b1220;
+    --accent:#06b6d4;
+    --key:#1f2937;
+    --key-ops:#334155;
+    --text:#e6eef6;
+    --muted:#9aa8b8;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg,#071029,#0b1220);
+    font-family:Inter,ui-sans-serif,system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    color:var(--text);
+    padding:28px;
+  }
+
+  .calculator {
+    width:360px;
+    max-width:96vw;
+    border-radius:14px;
+    background:linear-gradient(180deg,var(--panel), #06111b);
+    box-shadow: 0 12px 40px rgba(3,10,18,0.7), inset 0 1px 0 rgba(255,255,255,0.02);
+    padding:18px;
+  }
+
+  /* display */
+  .display {
+    background:var(--glass);
+    border-radius:10px;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    margin-bottom:14px;
+  }
+  .expr {
+    font-size:16px;
+    color:var(--muted);
+    min-height:18px;
+    word-break:break-all;
+  }
+  .result {
+    font-size:28px;
+    font-weight:600;
+    text-align:right;
+    color:var(--text);
+    min-height:36px;
+  }
+
+  /* keypad */
+  .pad {
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:10px;
+  }
+  button.key {
+    border:0;
+    padding:16px;
+    border-radius:10px;
+    font-size:18px;
+    cursor:pointer;
+    background:var(--key);
+    color:var(--text);
+    box-shadow: 0 6px 14px rgba(2,6,23,0.6);
+    transition:transform .06s ease, box-shadow .08s;
+  }
+  button.key:active{ transform:translateY(2px) scale(.998) }
+  button.gray { background:var(--key-ops); color:var(--text); }
+  button.accent {
+    background: linear-gradient(180deg,var(--accent), #028090);
+    color:#042027;
+    box-shadow: 0 10px 26px rgba(6,182,212,0.18);
+    font-weight:600;
+  }
+  
+  .key-eq {
+    grid-column: span 2;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+ 
+  @media (max-width:420px){
+    .display .result{ font-size:22px }
+    button.key{ padding:12px; font-size:16px }
+  }
+
+
+  button.key:focus { outline:2px solid rgba(6,182,212,0.18); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div class="calculator" role="application" aria-label="Calculator">
+  <div class="display" aria-live="polite">
+    <div class="expr" id="expr" aria-hidden="false"></div>
+    <div class="result" id="result">0</div>
+  </div>
+
+  <div class="pad" id="pad">
+    <button class="key gray" data-action="clear" aria-label="Clear (AC)">AC</button>
+    <button class="key gray" data-action="back" aria-label="Backspace">⌫</button>
+    <button class="key gray" data-value="(" aria-label="open parenthesis">(</button>
+    <button class="key gray" data-value=")" aria-label="close parenthesis">)</button>
+
+    <button class="key" data-value="7">7</button>
+    <button class="key" data-value="8">8</button>
+    <button class="key" data-value="9">9</button>
+    <button class="key gray" data-value="/" aria-label="divide">÷</button>
+
+    <button class="key" data-value="4">4</button>
+    <button class="key" data-value="5">5</button>
+    <button class="key" data-value="6">6</button>
+    <button class="key gray" data-value="*" aria-label="multiply">×</button>
+
+    <button class="key" data-value="1">1</button>
+    <button class="key" data-value="2">2</button>
+    <button class="key" data-value="3">3</button>
+    <button class="key gray" data-value="-" aria-label="minus">−</button>
+
+    <button class="key" data-value="0">0</button>
+    <button class="key" data-value="." aria-label="decimal">.</button>
+    <button class="key gray" data-action="percent" aria-label="percent">%</button>
+    <button class="key gray" data-value="+" aria-label="plus">+</button>
+
+    <button class="key" data-action="plusminus" aria-label="plus minus">±</button>
+    <button class="key" data-action="ans" aria-label="answer">Ans</button>
+    <button class="key-eq accent" data-action="equals" aria-label="equals">=</button>
+  </div>
+</div>
+
+<script>
+
+
+const exprEl = document.getElementById('expr');
+const resultEl = document.getElementById('result');
+const pad = document.getElementById('pad');
+
+let expression = '';    
+let lastAnswer = null;  
+
+pad.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const v = btn.dataset.value;
+  const action = btn.dataset.action;
+  if (v !== undefined) insertValue(v);
+  else if (action) handleAction(action);
+});
+
+
+function insertValue(v) {
+  
+  if (isOperatorChar(v)) {
+    if (expression === '' && v !== '-') return; // don't start with +*/ etc.
+    if (expression.endsWith(' ') && v !== '-') {
+    
+      expression = expression.slice(0, -3);
+    }
+    expression += ' ' + v + ' ';
+  } else {
+    expression += v;
+  }
+  render();
+}
+
+/* Actions */
+function handleAction(action) {
+  if (action === 'clear') {
+    expression = '';
+    resultEl.textContent = '0';
+  } else if (action === 'back') {
+    backspace();
+  } else if (action === 'equals') {
+    computeFinal();
+  } else if (action === 'percent') {
+    // append % directly to current number (user-friendly)
+    expression += '%';
+  } else if (action === 'plusminus') {
+    togglePlusMinus();
+  } else if (action === 'ans') {
+    if (lastAnswer !== null) expression += String(lastAnswer);
+  }
+  render();
+}
+
+function backspace() {
+  if (expression.endsWith(' ')) {
+    
+    expression = expression.slice(0, -3);
+  } else {
+
+    expression = expression.slice(0, -1);
+  }
+}
+
+
+function togglePlusMinus() {
+
+  const tokens = tokenize(expression);
+  if (tokens.length === 0) return;
+ 
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (tokens[i].type === 'number') {
+      const n = tokens[i].value;
+
+      tokens[i].value = String(-parseFloat(n));
+      expression = tokens.map(t => t.raw).join('');
+      return;
+    }
+  }
+}
+
+
+function render() {
+  exprEl.textContent = expression || '';
+ 
+  const r = tryEvaluate(expression);
+  if (r !== null && !Number.isNaN(r) && isFinite(r)) {
+    resultEl.textContent = formatNumber(r);
+  } else {
+    resultEl.textContent = '—';
+  }
+}
+
+/* Keyboard support */
+window.addEventListener('keydown', (e) => {
+  // when using keyboard, prevent typing into inputs (there are none) so safe
+  const k = e.key;
+  if ((k >= '0' && k <= '9') || k === '.' || k === '(' || k === ')') {
+    insertValue(k);
+    e.preventDefault();
+  } else if (k === '+' || k === '-' || k === '*' || k === '/') {
+    insertValue(k);
+    e.preventDefault();
+  } else if (k === 'Enter' || k === '=') {
+    computeFinal();
+    e.preventDefault();
+  } else if (k === 'Backspace') {
+    backspace(); render(); e.preventDefault();
+  } else if (k === 'Escape') {
+    expression = ''; render(); e.preventDefault();
+  } else if (k === '%') {
+    expression += '%'; render(); e.preventDefault();
+  }
+});
+
+/* Evaluate when user presses equals (commits) */
+function computeFinal() {
+  const r = tryEvaluate(expression);
+  if (r !== null && Number.isFinite(r)) {
+    lastAnswer = r;
+    expression = String(r); // make result the new expression
+    render();
+  } else {
+    // show error briefly
+    resultEl.textContent = 'Error';
+    setTimeout(()=>render(), 700);
+  }
+}
+
+/* Try to evaluate expression safely; returns number or null */
+function tryEvaluate(expr) {
+  if (!expr || expr.trim() === '') return null;
+  try {
+    
+    let transformed = expr.replace(/(\d+(\.\d+)?|\))%/g, (m, p1) => {
+      // If pattern is ")%" we interpret as (expr)% -> (expr)/100
+      if (p1 === ')') return ')/100';
+      return '(' + p1 + '/100)';
+    });
+
+    
+    transformed = transformed.replace(/×/g, '*').replace(/÷/g, '/').replace(/−/g, '-');
+
+    // Remove accidental multiple spaces
+    transformed = transformed.replace(/\s+/g, ' ');
+
+    // Only allow characters 0-9 . + - * / ( ) % and spaces
+    if (!/^[0-9+\-*/(). %]+$/.test(transformed)) return null;
+
+   
+    const fn = new Function('"use strict"; return (' + transformed + ')');
+    const value = fn();
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    return null;
+  } catch (err) {
+    return null;
+  }
+}
+
+/* Helpers */
+
+
+function tokenize(expr) {
+  if (!expr) return [];
+  const tokens = [];
+ 
+  const re = /(\d+(\.\d+)?)|[%()+\-*/]|\s+/g;
+  let m;
+  while ((m = re.exec(expr)) !== null) {
+    const raw = m[0];
+    if (/^\s+$/.test(raw)) {
+      tokens.push({ type: 'space', raw });
+    } else if (/^\d+(\.\d+)?$/.test(raw)) {
+      tokens.push({ type: 'number', value: raw, raw });
+    } else {
+      tokens.push({ type: 'op', value: raw, raw });
+    }
+  }
+  return tokens;
+}
+
+function isOperatorChar(ch) {
+  return ['+','-','*','/'].includes(ch);
+}
+
+function formatNumber(n) {
+ 
+  if (Math.abs(n) < 1e12) {
+    return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(10))).replace(/\.?0+$/, '');
+  } else {
+    return n.toExponential(6);
+  }
+}
+
+
+render();
+</script>
+
+</body>
+</html>
